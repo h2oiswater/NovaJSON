@@ -4,10 +4,12 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class NovaJSONWorker {
-	final static String SUPPORT_TYPE[] = new String[]{"int","Integer","long","Long","String","boolean","Boolean"};
+	final static String SUPPORT_TYPE[]  = new String[]{"int","Integer","long","Long","String","boolean","Boolean"};
+	final static String LIST_OR_ARRAY[] = new String[]{"List","[]"};
 	
 	final String TAG = "NovaJSONWorker";
 	
@@ -32,6 +34,7 @@ public class NovaJSONWorker {
 	 * @param group
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	public static JSONObject toJSON(Object obj,int group){
 		List<Field> fields = getAllField(obj.getClass());
 		
@@ -72,7 +75,34 @@ public class NovaJSONWorker {
 								data.put(pName, field.get(obj));
 							}
 							
-						}else{
+						}else if( isListOrArray(type) ){
+							// is null
+							JSONArray jsonArray = new JSONArray();
+							if( field.get(obj) == null ){
+								data.put( pName, jsonArray);
+								continue;
+							}
+							
+							// not null
+							if( type.equals("List") ){
+								// list
+								List<Object> list = (List<Object>) field.get(obj);
+								for(Object l:list){
+									if( l == null )continue;
+									jsonArray.put(toJSON(l, group));
+								}
+							}else{
+								// array
+								Object[] array = (Object[]) field.get(obj);
+								for(Object l:array){
+									if( l == null )continue;
+									jsonArray.put(toJSON(l, group));
+								}
+							}
+							
+							data.put( pName, jsonArray);
+							
+						}else {
 							if( field.get(obj) == null ){
 								data.put(field.getName(),new JSONObject());
 								continue;
@@ -120,6 +150,15 @@ public class NovaJSONWorker {
 	private static boolean isNormalSupportType(String type) {
 		for(String str:SUPPORT_TYPE){
 			if(str.equals(type)){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private static boolean isListOrArray(String type) {
+		for(String str:LIST_OR_ARRAY){
+			if(type.contains(str)){
 				return true;
 			}
 		}
